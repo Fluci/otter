@@ -18,14 +18,13 @@ public class MCSLock extends AbstractLock {
     @Override
     public void lock() {
         QNode my = myNode.get();
-        my.locked = true;
-        my.next.set(null);
-        QNode prev = tail.getAndSet(my);
-        if(prev == null) {
+        QNode pred = tail.getAndSet(my);
+        if(pred == null) {
             return;
         }
+        my.locked = true;
         // unlocking node might have to wait for this
-        prev.next.set(my);
+        pred.next = my;
         while(my.locked);
     }
 
@@ -47,13 +46,16 @@ public class MCSLock extends AbstractLock {
     @Override
     public void unlock() {
         QNode my = myNode.get();
-        if(tail.compareAndSet(my, null)) {
-            return;
+        if(my.next == null) {
+            if (tail.compareAndSet(my, null)) {
+                return;
+            }
+            // wait for thread to insert itself
+            while (my.next == null) ;
         }
-        // wait for thread to insert itself
-        while(my.next.get() == null);
         // let next thread run
-        my.next.get().locked = false;
+        my.next.locked = false;
+        my.next = null;
     }
 
     @Override
@@ -62,7 +64,7 @@ public class MCSLock extends AbstractLock {
     }
 
     private class QNode {
-        AtomicReference<QNode> next = new AtomicReference<>();
-        volatile boolean locked;
+        volatile QNode next = null;
+        volatile boolean locked = false;
     }
 }

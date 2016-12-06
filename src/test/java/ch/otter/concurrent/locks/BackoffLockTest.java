@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class BackoffLockTest {
     @Test
     void testSingleThreadLocking() {
-        LockInterfaceTests.testSimpleLock(new BackoffLock(), 2);
+        LockInterfaceTests.testSimpleLock(new BackoffLock(), 1);
     }
 
     @Test

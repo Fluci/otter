@@ -10,7 +10,8 @@ import java.util.concurrent.locks.Condition;
 
 /**
  * Implementation of a TASLock
- * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit"
+ *
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class TASLock extends AbstractLock {
     private AtomicBoolean lockTaken = new AtomicBoolean(false);

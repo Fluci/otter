@@ -21,7 +21,18 @@ public class LockInterfaceTests {
         testSimpleLock(lock, threadCount, 1000*1000);
     }
 
+    // TODO: make no progress timeout (read value, check every second, if not changed after timeout -> fail)
     static void testSimpleLock(Lock lock, int threadCount, final long eachWorkSize) {
+        if(threadCount < 1){
+            assertTrue(false, "invalid number of requested threads: " + threadCount);
+        }
+        if(threadCount == 1) {
+            for(int i = 0; i < eachWorkSize; i += 1) {
+                lock.lock();
+                lock.unlock();
+            }
+            return;
+        }
         long expectedResult = threadCount*eachWorkSize;
         List<Thread> threads = new ArrayList<>(threadCount);
         Counter runnable = new Counter(lock, eachWorkSize);
@@ -85,13 +96,15 @@ public class LockInterfaceTests {
                 assertTrue(false, "Failed at try " + i + "/" + tries);
             }
 
-            // test 2: tryLock should return immediately with false
+            // test: tryLock should return immediately with false
             try {
                 boolean val = lock.tryLock();
                 assertFalse(val, "Failed at try " + i + "/" + tries);
-            } finally {
+            } catch (Exception e) {
                 // assert threw, lock was acquired
                 lock.unlock();
+                throw e;
+            } finally {
                 stopThread.release();
             }
         }

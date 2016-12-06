@@ -4,8 +4,11 @@ import java.util.Random;
 
 /**
  * Created by feliceserena on 05.12.16.
- *
+ */
+/**
  * Waits for a random time interval.
+ *
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 class Backoff {
     final int MIN_WAIT;

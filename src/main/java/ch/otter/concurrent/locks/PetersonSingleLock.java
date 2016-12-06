@@ -12,6 +12,7 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * Only for two threads.
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class PetersonSingleLock extends AbstractLock {
     private volatile boolean[] interested = new boolean[2];

@@ -7,6 +7,11 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * Created by feliceserena on 05.12.16.
+ *
+ */
+
+/**
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class TTASLock extends AbstractLock {
     private AtomicBoolean lockTaken = new AtomicBoolean(false);
@@ -14,7 +19,9 @@ public class TTASLock extends AbstractLock {
     @Override
     public void lock() {
         while(true) {
+            // local spinning
             while(lockTaken.get());
+            // test memory
             if(!lockTaken.getAndSet(true)){
                 return;
             }

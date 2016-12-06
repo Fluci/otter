@@ -13,10 +13,11 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * Only for two threads.
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class PetersonLock extends AbstractLock {
-    private volatile AtomicIntegerArray level;
-    private volatile AtomicIntegerArray last_to_enter;
+    private final AtomicIntegerArray level;
+    private final AtomicIntegerArray last_to_enter;
     private final int threadCount;
     PetersonLock(int threadCount){
         if(threadCount < 0) {

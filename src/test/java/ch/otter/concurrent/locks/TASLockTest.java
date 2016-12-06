@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class TASLockTest {
     @Test
     void testSingleThreadLocking() {
-        LockInterfaceTests.testSimpleLock(new TASLock(), 2);
+        LockInterfaceTests.testSimpleLock(new TASLock(), 1);
     }
 
     @Test

@@ -7,6 +7,10 @@ import java.util.concurrent.locks.Condition;
 /**
  * Created by feliceserena on 05.12.16.
  */
+
+/**
+ * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
+ */
 public class BackoffLock extends AbstractLock {
     private AtomicBoolean lockTaken = new AtomicBoolean(false);
     private static final int MIN_WAIT = 1;

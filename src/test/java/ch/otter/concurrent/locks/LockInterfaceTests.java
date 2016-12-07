@@ -170,7 +170,7 @@ public class LockInterfaceTests {
                 // test: tryLock should return immediately with false
                 try {
                     boolean val = lock.tryLock();
-                    assertFalse(val, "Failed at try " + i + "/" + tries + ", tryLock returned " + val + " instead of false.");
+                    assertEquals(false, val, "Failed at try " + i + "/" + tries + ", tryLock returned " + val + " instead of false.");
                 } catch (Exception e) {
                     // assert threw, lock was acquired
                     lock.unlock();
@@ -308,7 +308,7 @@ public class LockInterfaceTests {
                     long end = System.currentTimeMillis();
                     duration = end - start;
 
-                    assertFalse(val, "Failed at try " + i + "/" + tries + " (" + duration + " ms)");
+                    assertEquals(false, val, "Failed at try " + i + "/" + tries + " (" + duration + " ms)");
                 } catch (Exception e) {
                     // assert threw, lock was acquired
                     lock.unlock();

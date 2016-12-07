@@ -2,6 +2,7 @@ package ch.otter.concurrent.locks;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.locks.Condition;
 
 /**
@@ -15,50 +16,39 @@ public class ALock extends AbstractLock {
     private final ThreadLocal<Integer> slotIndex = ThreadLocal.withInitial(() -> -1);
 
     private final AtomicInteger tail = new AtomicInteger(0);
-    private volatile byte[] flags;
-
-    // How many flags can be put in one cache line?
-    private static int FLAGS_CACHE_LINE = 64;
+    private volatile AtomicIntegerArray flags;
 
     private final int capacity;
 
-    private final static byte FLAG_WAITING = 0;
-    private final static byte FLAG_HAS_LOCK = 1;
-    private final static byte FLAG_ABANDONED = 3;
+    private final static int FLAG_WAITING = 0;
+    private final static int FLAG_HAS_LOCK = 1;
+    private final static int FLAG_ABANDONED = 3;
 
-    private void setFlag(int i, byte val) {
-        flags[i * FLAGS_CACHE_LINE] = val;
+    private boolean compareAndSet(int i, int expect, int update) {
+        return flags.compareAndSet(i, expect, update);
     }
-    private byte getFlag(int i) {
-        return flags[i * FLAGS_CACHE_LINE];
+    private void setFlag(int i, int val) {
+        flags.set(i, val);
+    }
+    private int getFlag(int i) {
+        return flags.get(i);
     }
 
     ALock(int capacity){
-        if(FLAGS_CACHE_LINE < 1) {
-            throw new RuntimeException("Invalid FLAGS_CACHE_LINE of " + FLAGS_CACHE_LINE + ", must be at least 1");
-        }
         this.capacity = capacity;
-        flags = new byte[this.capacity * FLAGS_CACHE_LINE];
+        flags = new AtomicIntegerArray(this.capacity);
         setFlag(0, FLAG_HAS_LOCK);
         for(int i = 1; i < this.capacity; i += 1) {
             setFlag(i, FLAG_WAITING);
         }
     }
 
-    private int enqueue(){
-        int id = tail.getAndIncrement() % capacity;
-        slotIndex.set(id);
-
-        // should rarely happen
-        while(getFlag(id) == FLAG_ABANDONED);
-
-        return id;
-    }
-
     @Override
     public void lock() {
-        int id = enqueue();
-        while (getFlag(id) == FLAG_WAITING);
+        int id = getNewId();
+        slotIndex.set(id);
+        compareAndSet(id, FLAG_ABANDONED, FLAG_WAITING);
+        while(getFlag(id) == FLAG_WAITING);
     }
 
     @Override
@@ -68,21 +58,31 @@ public class ALock extends AbstractLock {
 
     @Override
     public boolean tryLock() {
-        int id = enqueue();
-        if (getFlag(id) == FLAG_HAS_LOCK) {
+        int id = getNewId();
+        slotIndex.set(id);
+        int flag = getFlag(id);
+
+        if(flag == FLAG_HAS_LOCK) {
             // got lock
             return true;
         }
         // recover
-        setFlag(id, FLAG_ABANDONED);
+        // If no other thread is running, there are no abandoned flags
+        // and our field would be set to waiting
+        // so there is somebody working and we return
+        if(flag == FLAG_WAITING) {
+            setFlag(id, FLAG_ABANDONED);
+        }
         return false;
     }
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        int id = enqueue();
+        int id = getNewId();
+        slotIndex.set(id);
         long stopAt = getStopAt(time, unit);
-        while (getFlag(id) == FLAG_WAITING) {
+        System.err.println(getFlag(id));
+        while (getFlag(id) != FLAG_HAS_LOCK) {
             if(stopAtExpired(stopAt)) {
                 setFlag(id, FLAG_ABANDONED);
                 return false;
@@ -95,10 +95,9 @@ public class ALock extends AbstractLock {
     public void unlock() {
         int id = slotIndex.get();
         setFlag(id, FLAG_WAITING);
-        int nextId = (id + 1) % capacity;
-        while(getFlag(nextId) == FLAG_ABANDONED){
-            setFlag(nextId, FLAG_WAITING);
-            nextId = (nextId + 1) % capacity;
+        int nextId = getNextId(id);
+        while(compareAndSet(nextId, FLAG_ABANDONED, FLAG_WAITING)){
+            nextId = getNextId(nextId);
         }
         setFlag(nextId, FLAG_HAS_LOCK);
     }
@@ -106,5 +105,15 @@ public class ALock extends AbstractLock {
     @Override
     public Condition newCondition() {
         return null;
+    }
+
+    private int getNextId(int id) {
+        return (id + 1) % capacity;
+    }
+    private int getNewId(){
+        return tail.getAndIncrement() % capacity;
+    }
+    private void releaseId(int id) {
+
     }
 }

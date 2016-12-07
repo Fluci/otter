@@ -10,6 +10,8 @@ import java.util.concurrent.locks.Condition;
 
 /**
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
+ *
+ * Sets `next` field of predecessor, spins on own QNode.
  */
 public class MCSLock extends AbstractLock {
     private final AtomicReference<QNode> tail = new AtomicReference<>();
@@ -22,10 +24,10 @@ public class MCSLock extends AbstractLock {
         if(pred == null) {
             return;
         }
-        my.locked = true;
+        my.state = STATE_LOCKED;
         // unlocking node might have to wait for this
         pred.next = my;
-        while(my.locked);
+        while(my.state == STATE_LOCKED);
     }
 
     @Override
@@ -54,7 +56,7 @@ public class MCSLock extends AbstractLock {
             while (my.next == null) ;
         }
         // let next thread run
-        my.next.locked = false;
+        my.next.state = STATE_RELEASED;
         my.next = null;
     }
 
@@ -63,8 +65,11 @@ public class MCSLock extends AbstractLock {
         return null;
     }
 
+    private final static byte STATE_RELEASED = 0;
+    private final static byte STATE_LOCKED = 1;
+
     private class QNode {
         volatile QNode next = null;
-        volatile boolean locked = false;
+        volatile byte state = STATE_RELEASED;
     }
 }

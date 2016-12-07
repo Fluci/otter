@@ -73,18 +73,16 @@ public class LockInterfaceTests {
         // some set up for test
         final CyclicBarrier barrier = new CyclicBarrier(2);
         final Semaphore stopThread = new Semaphore(0);
-        Runnable runnable = new Runnable(){
-            public void run() {
-                lock.lock();
-                try {
-                    barrier.await();
-                    stopThread.acquire();
-                } catch (BrokenBarrierException | InterruptedException e) {
-                    e.printStackTrace();
-                    assertTrue(false);
-                } finally {
-                    lock.unlock();
-                }
+        Runnable runnable = () -> {
+            lock.lock();
+            try {
+                barrier.await();
+                stopThread.acquire();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                e.printStackTrace();
+                assertTrue(false);
+            } finally {
+                lock.unlock();
             }
         };
         for(int i = 0; i < tries; i += 1) {
@@ -104,12 +102,59 @@ public class LockInterfaceTests {
             } catch (Exception e) {
                 // assert threw, lock was acquired
                 lock.unlock();
+                System.err.println("Failed at try " + i + "/" + tries);
                 throw new RuntimeException(e);
             } finally {
                 stopThread.release();
             }
         }
     }
+
+    static void testTryLockSimpleFalseSingleBlocker(Lock lock) {
+        testTryLockSimpleFalse(lock, 1000);
+    }
+    static void testTryLockSimpleFalseSingleBlocker(final Lock lock, int tries) {
+        // some set up for test
+        final CyclicBarrier barrier = new CyclicBarrier(2);
+        final Semaphore stopThread = new Semaphore(0);
+        Runnable runnable = () -> {
+            lock.lock();
+            try {
+                barrier.await();
+                stopThread.acquire();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                e.printStackTrace();
+                assertTrue(false);
+            } finally {
+                lock.unlock();
+            }
+        };
+        new Thread(runnable).start();
+        try {
+            barrier.await();
+            for(int i = 0; i < tries; i += 1) {
+
+                // test: tryLock should return immediately with false
+                try {
+                    boolean val = lock.tryLock();
+                    assertFalse(val, "Failed at try " + i + "/" + tries + ", tryLock returned " + val + " instead of false.");
+                } catch (Exception e) {
+                    // assert threw, lock was acquired
+                    lock.unlock();
+                    System.err.println("Failed at try " + i + "/" + tries);
+                    throw new RuntimeException(e);
+                } finally {
+                    stopThread.release();
+                }
+            }
+        } catch (BrokenBarrierException | InterruptedException e) {
+            e.printStackTrace();
+            assertTrue(false, "Test interrupted");
+        } finally {
+            stopThread.release();
+        }
+    }
+
     static void testTryLockTimeOutTrue(final Lock lock) {
         testTryLockTimeOutTrue(lock, 10);
     }

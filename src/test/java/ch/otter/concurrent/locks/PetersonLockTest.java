@@ -42,6 +42,11 @@ class PetersonLockTest {
     }
 
     @Test
+    void testTryLockSimpleFalseSingleBlock() {
+        LockInterfaceTests.testTryLockSimpleFalseSingleBlocker(new PetersonLock(2));
+    }
+
+    @Test
     void testTryLockTimeOutTrue() {
         LockInterfaceTests.testTryLockTimeOutTrue(new PetersonLock(2));
     }

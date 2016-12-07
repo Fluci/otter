@@ -42,6 +42,11 @@ class BackoffLockTest {
     }
 
     @Test
+    void testTryLockSimpleFalseSingleBlock() {
+        LockInterfaceTests.testTryLockSimpleFalseSingleBlocker(new BackoffLock());
+    }
+
+    @Test
     void testTryLockTimeOutTrue() {
         LockInterfaceTests.testTryLockTimeOutTrue(new BackoffLock());
     }

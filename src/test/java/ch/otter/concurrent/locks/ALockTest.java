@@ -38,6 +38,11 @@ class ALockTest {
     }
 
     @Test
+    void testTryLockSimpleFalseSingleBlock() {
+        LockInterfaceTests.testTryLockSimpleFalseSingleBlocker(new ALock(2));
+    }
+
+    @Test
     void testTryLockSimpleFalse() {
         LockInterfaceTests.testTryLockSimpleFalse(new ALock(2));
     }

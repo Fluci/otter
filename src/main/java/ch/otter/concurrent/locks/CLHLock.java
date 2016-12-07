@@ -105,16 +105,16 @@ public class CLHLock extends AbstractLock {
     }
 
     // lock released
-    short STATE_RELEASED = 0;
+    byte STATE_RELEASED = 0;
 
     // acquire lock, wait for lock
-    short STATE_WAITING = 1;
+    byte STATE_WAITING = 1;
 
     // No more interest in acquiring the lock
-    short STATE_ABANDONED = 2;
+    byte STATE_ABANDONED = 2;
 
     class QNode {
-        volatile short state = STATE_RELEASED;
+        volatile byte state = STATE_RELEASED;
         volatile QNode predecessor = null;
     }
 }

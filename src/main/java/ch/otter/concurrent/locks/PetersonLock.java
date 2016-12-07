@@ -83,7 +83,21 @@ public class PetersonLock extends AbstractLock {
     }
 
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        return false;
+        int myId = getId();
+        id.set(myId);
+        long stopAt = getStopAt(time, unit);
+        for(int l = 0; l < threadCount-1; l += 1) {
+            level.set(myId, l);
+            last_to_enter.set(l, myId);
+            while (last_to_enter.get(l) == myId && existsKGreaterL(l, myId)) {
+                if(stopAtExpired(stopAt)) {
+                    level.set(myId, -1);
+                    releaseId(myId);
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public void unlock() {

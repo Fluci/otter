@@ -36,7 +36,9 @@ public class CLHLock extends AbstractLock {
         QNode pred = my.predecessor;
         while(true) {
             short state = pred.state;
-            while (state == STATE_WAITING) {state = pred.state;}
+            while (state == STATE_WAITING) {
+                state = pred.state;
+            }
             if(state == STATE_RELEASED) {
                 return;
             }
@@ -63,6 +65,7 @@ public class CLHLock extends AbstractLock {
         }
         // failed
         my.state = STATE_ABANDONED;
+        myNode.set(new QNode());
         return false;
     }
 

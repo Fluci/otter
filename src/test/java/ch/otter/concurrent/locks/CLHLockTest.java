@@ -30,7 +30,7 @@ class CLHLockTest {
 
     @Test
     void testManyThreadLocking16() {
-        LockInterfaceTests.testSimpleLock(new CLHLock(), 16, 1000);
+        LockInterfaceTests.testSimpleLock(new CLHLock(), 16, 5000);
     }
 
     @Test

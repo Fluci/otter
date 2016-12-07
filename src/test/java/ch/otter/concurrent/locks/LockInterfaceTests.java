@@ -14,6 +14,18 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class LockInterfaceTests {
 
+    static int MAX_THREADS = Runtime.getRuntime().availableProcessors()+1;
+
+    static int ceilThreads(int threadCount) {
+        if(threadCount < 1){
+            assertTrue(false, "invalid number of requested threads: " + threadCount);
+        }
+        if(MAX_THREADS < 1 || threadCount < MAX_THREADS) {
+            return threadCount;
+        }
+        return MAX_THREADS;
+    }
+
     static void testSimpleLock(Lock lock) {
         testSimpleLock(lock, 2);
     }
@@ -22,11 +34,14 @@ public class LockInterfaceTests {
         testSimpleLock(lock, threadCount, 1000*1000);
     }
 
-    // TODO: make no progress timeout (read value, check every second, if not changed after timeout -> fail)
+    /**
+     * Fails if no progress is made.
+     * @param lock
+     * @param threadCount
+     * @param eachWorkSize
+     */
     static void testSimpleLock(Lock lock, int threadCount, final long eachWorkSize) {
-        if(threadCount < 1){
-            assertTrue(false, "invalid number of requested threads: " + threadCount);
-        }
+        threadCount = ceilThreads(threadCount);
         if(threadCount == 1) {
             for(int i = 0; i < eachWorkSize; i += 1) {
                 lock.lock();
@@ -34,6 +49,7 @@ public class LockInterfaceTests {
             }
             return;
         }
+
         long expectedResult = threadCount*eachWorkSize;
         List<Thread> threads = new ArrayList<>(threadCount);
         Counter runnable = new Counter(lock, eachWorkSize);
@@ -44,6 +60,17 @@ public class LockInterfaceTests {
             t.start();
         }
         try {
+            long lastVal = -1;
+            while(true){
+                Thread.sleep(100);
+                long probe = Counter.sharedCounter;
+                assertTrue(probe != lastVal,
+                        "No progress for an entire second: last seen value: " + lastVal + ", probe: " + probe);
+                lastVal = probe;
+                if(lastVal == expectedResult){
+                    break;
+                }
+            }
             for (Thread t : threads) {
                 t.join();
             }
@@ -111,7 +138,7 @@ public class LockInterfaceTests {
     }
 
     static void testTryLockSimpleFalseSingleBlocker(Lock lock) {
-        testTryLockSimpleFalse(lock, 1000);
+        testTryLockSimpleFalseSingleBlocker(lock, 1000);
     }
     static void testTryLockSimpleFalseSingleBlocker(final Lock lock, int tries) {
         // some set up for test
@@ -143,8 +170,6 @@ public class LockInterfaceTests {
                     lock.unlock();
                     System.err.println("Failed at try " + i + "/" + tries);
                     throw new RuntimeException(e);
-                } finally {
-                    stopThread.release();
                 }
             }
         } catch (BrokenBarrierException | InterruptedException e) {

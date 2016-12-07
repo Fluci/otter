@@ -14,8 +14,9 @@ import java.util.concurrent.locks.Condition;
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class TASLock extends AbstractLock {
-    private AtomicBoolean lockTaken = new AtomicBoolean(false);
-	public void lock() {
+    private final AtomicBoolean lockTaken = new AtomicBoolean(false);
+
+    public void lock() {
 	    // stop looping when lock was not taken before
         while(lockTaken.getAndSet(true));
 	}

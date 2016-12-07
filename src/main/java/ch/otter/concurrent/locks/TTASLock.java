@@ -23,6 +23,7 @@ public class TTASLock extends AbstractLock {
             while(lockTaken.get());
             // test memory
             if(!lockTaken.getAndSet(true)){
+                // get lock
                 return;
             }
         }
@@ -40,7 +41,21 @@ public class TTASLock extends AbstractLock {
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        return false;
+        long stopAt = getStopAt(time, unit);
+
+        while(true) {
+            // local spinning
+            while(lockTaken.get()){
+                if(stopAtExpired(stopAt)) {
+                    return false;
+                }
+            }
+            // test memory
+            if(!lockTaken.getAndSet(true)){
+                // get lock
+                return true;
+            }
+        }
     }
 
     @Override

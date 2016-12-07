@@ -40,4 +40,15 @@ class PetersonLockTest {
     void testTryLockSimpleFalse() {
         LockInterfaceTests.testTryLockSimpleFalse(new PetersonLock(2));
     }
+
+    @Test
+    void testTryLockTimeOutTrue() {
+        LockInterfaceTests.testTryLockTimeOutTrue(new PetersonLock(2));
+    }
+
+    @Test
+    void testTryLockTimeOutFalse(){
+        LockInterfaceTests.testTryLockTimeOutFalse(new PetersonLock(2));
+    }
+
 }

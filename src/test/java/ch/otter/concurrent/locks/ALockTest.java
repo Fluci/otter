@@ -41,4 +41,14 @@ class ALockTest {
     void testTryLockSimpleFalse() {
         LockInterfaceTests.testTryLockSimpleFalse(new ALock(2));
     }
+
+    @Test
+    void testTryLockTimeOutTrue() {
+        LockInterfaceTests.testTryLockTimeOutTrue(new ALock(2));
+    }
+
+    @Test
+    void testTryLockTimeOutFalse(){
+        LockInterfaceTests.testTryLockTimeOutFalse(new ALock(2));
+    }
 }

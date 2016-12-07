@@ -51,13 +51,14 @@ public class BackoffLock extends AbstractLock {
         Backoff waiter = new Backoff(MIN_WAIT, MAX_WAIT);
         long stopAt = getStopAt(time, unit);
         while(true) {
-            while(lockTaken.get());
-            if(!lockTaken.getAndSet(true)) {
-                return true;
-            } else {
+            while(lockTaken.get()){
                 if(stopAtExpired(stopAt)) {
                     return false;
                 }
+            }
+            if(!lockTaken.getAndSet(true)) {
+                return true;
+            } else {
                 waiter.backoff();
             }
         }

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -103,10 +104,86 @@ public class LockInterfaceTests {
             } catch (Exception e) {
                 // assert threw, lock was acquired
                 lock.unlock();
-                throw e;
+                throw new RuntimeException(e);
             } finally {
                 stopThread.release();
             }
+        }
+    }
+    static void testTryLockTimeOutTrue(final Lock lock) {
+        testTryLockTimeOutTrue(lock, 10);
+    }
+    static void testTryLockTimeOutTrue(final Lock lock, int tries) {
+        // get system warm
+        lock.lock();
+        lock.unlock();
+        // test
+        for(int i = 0; i < tries; i += 1) {
+            boolean val = lock.tryLock();
+
+            // if this throws, lock wasn't acquired, so all fine
+            assertTrue(val);
+
+            lock.unlock();
+        }
+    }
+
+    static void testTryLockTimeOutFalse(final Lock lock) {
+        testTryLockTimeOutFalse(lock, 200);
+    }
+
+    static void testTryLockTimeOutFalse(final Lock lock, int tries) {
+        testTryLockTimeOutFalse(lock, tries, 2, TimeUnit.MILLISECONDS);
+    }
+
+    static void testTryLockTimeOutFalse(final Lock lock, int tries, int time, TimeUnit unit) {
+        // some set up for test
+        final CyclicBarrier barrier = new CyclicBarrier(2);
+        final Semaphore stopThread = new Semaphore(0);
+        Runnable runnable = new Runnable(){
+            public void run() {
+                lock.lock();
+                try {
+                    barrier.await();
+                    stopThread.acquire();
+                } catch (BrokenBarrierException | InterruptedException e) {
+                    e.printStackTrace();
+                    assertTrue(false);
+                } finally {
+                    lock.unlock();
+                }
+            }
+        };
+        long timeInMillis = TimeUnit.MILLISECONDS.convert(time, unit);
+        for(int i = 0; i < tries; i += 1) {
+            new Thread(runnable).start();
+            try {
+                barrier.await();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                e.printStackTrace();
+                stopThread.release();
+                assertTrue(false, "Failed at try " + i + "/" + tries);
+            }
+
+            // test: tryLock should return after `time` with false
+            long duration;
+            try {
+                long start = System.currentTimeMillis();
+                boolean val = lock.tryLock(time, unit);
+                long end = System.currentTimeMillis();
+                duration = end - start;
+
+                assertFalse(val, "Failed at try " + i + "/" + tries + " (" + duration + " ms)");
+            } catch (Exception e) {
+                // assert threw, lock was acquired
+                lock.unlock();
+                throw new RuntimeException(e);
+            } finally {
+                stopThread.release();
+            }
+            assertTrue(timeInMillis <= duration,
+                    "TryLock waited only for " + duration + " ms, "
+                            + "should have waited at least " + timeInMillis + " ms.");
         }
     }
 

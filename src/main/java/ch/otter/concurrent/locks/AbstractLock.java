@@ -12,6 +12,6 @@ abstract class AbstractLock implements Lock {
         return System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(time, unit);
     }
     boolean stopAtExpired(long stopAt) {
-        return stopAt > System.currentTimeMillis();
+        return stopAt <= System.currentTimeMillis();
     }
 }

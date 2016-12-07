@@ -13,7 +13,7 @@ class PetersonSingleLockTest {
 
     @Test
     void testTwoThreadLocking() {
-        LockInterfaceTests.testSimpleLock(new PetersonSingleLock(), 2);
+        LockInterfaceTests.testSimpleLock(new PetersonSingleLock(), 2, 3*1000*1000);
     }
 
     @Test

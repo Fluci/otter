@@ -100,7 +100,7 @@ public class LockInterfaceTests {
             // test: tryLock should return immediately with false
             try {
                 boolean val = lock.tryLock();
-                assertFalse(val, "Failed at try " + i + "/" + tries);
+                assertFalse(val, "Failed at try " + i + "/" + tries + ", tryLock returned " + val + " instead of false.");
             } catch (Exception e) {
                 // assert threw, lock was acquired
                 lock.unlock();
@@ -119,10 +119,13 @@ public class LockInterfaceTests {
         lock.unlock();
         // test
         for(int i = 0; i < tries; i += 1) {
-            boolean val = lock.tryLock();
-
-            // if this throws, lock wasn't acquired, so all fine
-            assertTrue(val);
+            try {
+                boolean val = lock.tryLock(10, TimeUnit.DAYS);
+                // if this throws, lock wasn't acquired, so all fine
+                assertTrue(val);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
 
             lock.unlock();
         }

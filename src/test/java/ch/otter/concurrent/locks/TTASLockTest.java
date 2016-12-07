@@ -56,4 +56,8 @@ class TTASLockTest {
         LockInterfaceTests.testTryLockTimeOutFalse(new TTASLock());
     }
 
+    @Test
+    void testTryLockTimeOutFalseSingleBlocker(){
+        LockInterfaceTests.testTryLockTimeOutFalseSingleBlocker(new TTASLock());
+    }
 }

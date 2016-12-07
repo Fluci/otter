@@ -20,7 +20,9 @@ public class CLHLock extends AbstractLock {
         QNode my = myNode.get();
 
         // wait until thread puts our old predecessor as its own
-        while(my.state != STATE_RELEASED);
+        if(my.state != STATE_RELEASED){
+            throw new RuntimeException("Invalid state " + my.state + " encountered while enqueuing.");
+        }
         my.state = STATE_WAITING;
 
         // Enqueue, we have our place now, we're in control
@@ -79,6 +81,7 @@ public class CLHLock extends AbstractLock {
             while (state == STATE_WAITING) {
                 if(stopAtExpired(stopAt)){
                     my.state = STATE_ABANDONED;
+                    myNode.set(new QNode());
                     return false;
                 }
                 state = pred.state;

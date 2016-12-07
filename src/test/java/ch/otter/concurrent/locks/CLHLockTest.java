@@ -58,4 +58,8 @@ class CLHLockTest {
         LockInterfaceTests.testTryLockTimeOutFalse(new CLHLock());
     }
 
+    @Test
+    void testTryLockTimeOutFalseSingleBlocker(){
+        LockInterfaceTests.testTryLockTimeOutFalseSingleBlocker(new CLHLock());
+    }
 }

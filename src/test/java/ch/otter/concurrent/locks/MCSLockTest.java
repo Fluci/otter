@@ -56,4 +56,8 @@ class MCSLockTest {
         LockInterfaceTests.testTryLockTimeOutFalse(new MCSLock());
     }
 
+    @Test
+    void testTryLockTimeOutFalseSingleBlocker(){
+        LockInterfaceTests.testTryLockTimeOutFalseSingleBlocker(new MCSLock());
+    }
 }

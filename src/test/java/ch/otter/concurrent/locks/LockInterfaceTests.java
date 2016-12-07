@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class LockInterfaceTests {
 
     static int MAX_THREADS = Runtime.getRuntime().availableProcessors()+1;
+    static int PROGRESS_MAX_TIMEOUT = 100; // [ms]
 
     static int ceilThreads(int threadCount) {
         if(threadCount < 1){
@@ -61,15 +62,20 @@ public class LockInterfaceTests {
         }
         try {
             long lastVal = -1;
-            while(true){
-                Thread.sleep(100);
-                long probe = Counter.sharedCounter;
+            boolean wait = true;
+            while(wait){
+                int timeWaited = 0;
+                long probe;
+                do {
+                    Thread.sleep(10);
+                    probe = Counter.sharedCounter;
+                    wait = probe != expectedResult;
+                    timeWaited += 10;
+                } while (wait && timeWaited > PROGRESS_MAX_TIMEOUT);
+
                 assertTrue(probe != lastVal,
                         "No progress for an entire second: last seen value: " + lastVal + ", probe: " + probe);
                 lastVal = probe;
-                if(lastVal == expectedResult){
-                    break;
-                }
             }
             for (Thread t : threads) {
                 t.join();
@@ -213,18 +219,16 @@ public class LockInterfaceTests {
         // some set up for test
         final CyclicBarrier barrier = new CyclicBarrier(2);
         final Semaphore stopThread = new Semaphore(0);
-        Runnable runnable = new Runnable(){
-            public void run() {
-                lock.lock();
-                try {
-                    barrier.await();
-                    stopThread.acquire();
-                } catch (BrokenBarrierException | InterruptedException e) {
-                    e.printStackTrace();
-                    assertTrue(false);
-                } finally {
-                    lock.unlock();
-                }
+        Runnable runnable = () -> {
+            lock.lock();
+            try {
+                barrier.await();
+                stopThread.acquire();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                e.printStackTrace();
+                assertTrue(false);
+            } finally {
+                lock.unlock();
             }
         };
         long timeInMillis = TimeUnit.MILLISECONDS.convert(time, unit);
@@ -260,6 +264,64 @@ public class LockInterfaceTests {
         }
     }
 
+
+    static void testTryLockTimeOutFalseSingleBlocker(final Lock lock) {
+        testTryLockTimeOutFalseSingleBlocker(lock, 200);
+    }
+
+    static void testTryLockTimeOutFalseSingleBlocker(final Lock lock, int tries) {
+        testTryLockTimeOutFalseSingleBlocker(lock, tries, 2, TimeUnit.MILLISECONDS);
+    }
+
+    static void testTryLockTimeOutFalseSingleBlocker(final Lock lock, int tries, int time, TimeUnit unit) {
+        // some set up for test
+        final CyclicBarrier barrier = new CyclicBarrier(2);
+        final Semaphore stopThread = new Semaphore(0);
+        Runnable runnable = () -> {
+            lock.lock();
+            try {
+                barrier.await();
+                stopThread.acquire();
+            } catch (BrokenBarrierException | InterruptedException e) {
+                e.printStackTrace();
+                assertTrue(false);
+            } finally {
+                lock.unlock();
+            }
+        };
+        new Thread(runnable).start();
+        try {
+            barrier.await();
+        } catch (BrokenBarrierException | InterruptedException e) {
+            e.printStackTrace();
+            stopThread.release();
+            assertTrue(false, "Unexpected exception.");
+        }
+        long timeInMillis = TimeUnit.MILLISECONDS.convert(time, unit);
+        try {
+            for (int i = 0; i < tries; i += 1) {
+                // test: tryLock should return after `time` with false
+                long duration;
+                try {
+                    long start = System.currentTimeMillis();
+                    boolean val = lock.tryLock(time, unit);
+                    long end = System.currentTimeMillis();
+                    duration = end - start;
+
+                    assertFalse(val, "Failed at try " + i + "/" + tries + " (" + duration + " ms)");
+                } catch (Exception e) {
+                    // assert threw, lock was acquired
+                    lock.unlock();
+                    throw new RuntimeException(e);
+                }
+                assertTrue(timeInMillis <= duration,
+                        "TryLock waited only for " + duration + " ms, "
+                                + "should have waited at least " + timeInMillis + " ms.");
+            }
+        } finally {
+            stopThread.release();
+        }
+    }
 
     private static class Counter implements Runnable {
         private static long sharedCounter = 0;

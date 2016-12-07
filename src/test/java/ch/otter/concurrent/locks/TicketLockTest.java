@@ -56,4 +56,8 @@ class TicketLockTest {
         LockInterfaceTests.testTryLockTimeOutFalse(new TicketLock());
     }
 
+    @Test
+    void testTryLockTimeOutFalseSingleBlocker(){
+        LockInterfaceTests.testTryLockTimeOutFalseSingleBlocker(new TicketLock());
+    }
 }

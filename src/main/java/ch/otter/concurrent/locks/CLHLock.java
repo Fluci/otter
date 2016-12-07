@@ -10,6 +10,9 @@ import java.util.concurrent.locks.Condition;
 
 /**
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
+ *
+ * Implicit queue, spins on node of predecessor.
+ * When normally locking, nodes' ownership travels from predecessor to successor.
  */
 public class CLHLock extends AbstractLock {
     // last node of queue
@@ -19,7 +22,6 @@ public class CLHLock extends AbstractLock {
     private QNode enqueue(){
         QNode my = myNode.get();
 
-        // wait until thread puts our old predecessor as its own
         if(my.state != STATE_RELEASED){
             throw new RuntimeException("Invalid state " + my.state + " encountered while enqueuing.");
         }
@@ -38,17 +40,18 @@ public class CLHLock extends AbstractLock {
         QNode pred = my.predecessor;
         while(true) {
             short state = pred.state;
+            // we have to wait for other lock to either release lock
+            // or abandon it
             while (state == STATE_WAITING) {
                 state = pred.state;
             }
             if(state == STATE_RELEASED) {
+                my.predecessor = pred;
                 return;
             }
             // state == STATE_ABANDONED
-            QNode oldPred = pred;
+            // just skip this node and let it be garbage collected
             pred = pred.predecessor;
-            // let the other acquire new lock
-            oldPred.state = STATE_RELEASED;
         }
     }
 
@@ -60,8 +63,7 @@ public class CLHLock extends AbstractLock {
     @Override
     public boolean tryLock() {
         QNode my = enqueue();
-        QNode pred = my.predecessor;
-        if(pred.state == STATE_RELEASED) {
+        if(my.predecessor.state == STATE_RELEASED) {
             // got lock
             return true;
         }
@@ -87,13 +89,11 @@ public class CLHLock extends AbstractLock {
                 state = pred.state;
             }
             if(state == STATE_RELEASED) {
+                my.predecessor = pred;
                 return true;
             }
             // state == STATE_ABANDONED
-            QNode oldPred = pred;
             pred = pred.predecessor;
-            // let the other acquire new lock
-            oldPred.state = STATE_RELEASED;
         }
     }
 
@@ -113,7 +113,7 @@ public class CLHLock extends AbstractLock {
     // lock released
     byte STATE_RELEASED = 0;
 
-    // acquire lock, wait for lock
+    // acquired lock, wait for lock
     byte STATE_WAITING = 1;
 
     // No more interest in acquiring the lock

@@ -64,17 +64,17 @@ public class LockInterfaceTests {
             long lastVal = -1;
             boolean wait = true;
             while(wait){
-                int timeWaited = 0;
+                long waitUntil = System.currentTimeMillis() + PROGRESS_MAX_TIMEOUT;
                 long probe;
+                long stepSize = 10;
                 do {
-                    Thread.sleep(10);
+                    Thread.sleep(stepSize);
                     probe = Counter.sharedCounter;
                     wait = probe != expectedResult;
-                    timeWaited += 10;
-                } while (wait && timeWaited > PROGRESS_MAX_TIMEOUT);
+                } while (wait && System.currentTimeMillis() < waitUntil);
 
                 assertTrue(probe != lastVal,
-                        "No progress for an entire second: last seen value: " + lastVal + ", probe: " + probe);
+                        "No progress for more than " + PROGRESS_MAX_TIMEOUT + " ms: last seen value: " + lastVal + ", probe: " + probe);
                 lastVal = probe;
             }
             for (Thread t : threads) {

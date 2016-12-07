@@ -5,6 +5,7 @@ package ch.otter.concurrent.locks;
  */
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 
@@ -20,14 +21,15 @@ public class MCSLock extends AbstractLock {
     @Override
     public void lock() {
         QNode my = myNode.get();
+
         QNode pred = tail.getAndSet(my);
         if(pred == null) {
             return;
         }
-        my.state = STATE_LOCKED;
+        my.setState(STATE_LOCKED);
         // unlocking node might have to wait for this
         pred.next = my;
-        while(my.state == STATE_LOCKED);
+        while(my.getState() == STATE_LOCKED);
     }
 
     @Override
@@ -37,26 +39,37 @@ public class MCSLock extends AbstractLock {
 
     @Override
     public boolean tryLock() {
+        QNode my = myNode.get();
+        if(tail.compareAndSet(null, my)){
+            return true;
+        }
         return false;
+
     }
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+        QNode my = myNode.get();
+        long stopAt = getStopAt(time, unit);
+        do {
+        if(tail.compareAndSet(null, my)){
+            return true;
+        }} while(!stopAtExpired(stopAt));
         return false;
     }
 
     @Override
     public void unlock() {
         QNode my = myNode.get();
-        if(my.next == null) {
+        if (my.next == null) {
             if (tail.compareAndSet(my, null)) {
                 return;
             }
-            // wait for thread to insert itself
+            // wait for thread to completely insert itself
             while (my.next == null) ;
         }
-        // let next thread run
-        my.next.state = STATE_RELEASED;
+
+        my.next.setState(STATE_RELEASED);
         my.next = null;
     }
 
@@ -65,11 +78,17 @@ public class MCSLock extends AbstractLock {
         return null;
     }
 
-    private final static byte STATE_RELEASED = 0;
-    private final static byte STATE_LOCKED = 1;
+    private final static boolean STATE_RELEASED = false;
+    private final static boolean STATE_LOCKED = true;
 
     private class QNode {
         volatile QNode next = null;
-        volatile byte state = STATE_RELEASED;
+        private volatile boolean state = STATE_RELEASED;
+        boolean getState() {
+            return state;
+        }
+        void setState(boolean s) {
+            state = s;
+        }
     }
 }

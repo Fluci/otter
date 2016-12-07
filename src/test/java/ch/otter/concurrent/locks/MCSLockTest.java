@@ -28,7 +28,7 @@ class MCSLockTest {
 
     @Test
     void testManyThreadLocking16() {
-        LockInterfaceTests.testSimpleLock(new MCSLock(), 16, 5000);
+        LockInterfaceTests.testSimpleLock(new MCSLock(), 16, 10000);
     }
 
     @Test

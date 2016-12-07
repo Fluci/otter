@@ -7,6 +7,7 @@ package ch.otter.concurrent.locks;
  */
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -16,9 +17,12 @@ import java.util.concurrent.locks.Lock;
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class PetersonLock extends AbstractLock {
+    private final AtomicBoolean[] ids;
+    private final ThreadLocal<T>
     private final AtomicIntegerArray level;
     private final AtomicIntegerArray last_to_enter;
     private final int threadCount;
+
     PetersonLock(int threadCount){
         if(threadCount < 0) {
             throw new IllegalArgumentException("threadCount must be at least 0.");

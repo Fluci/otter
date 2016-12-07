@@ -15,14 +15,17 @@ import java.util.concurrent.locks.Condition;
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class PetersonSingleLock extends AbstractLock {
-    private final ThreadLocal<Integer> id = ThreadLocal.withInitial(() -> new Integer(0));
+    private final ThreadLocal<Integer> id = new ThreadLocal<>();
     private final AtomicBoolean[] ids = new AtomicBoolean[2];
-    private final AtomicBoolean[] interested = new AtomicBoolean[2];
+
+    // The alternative of using AtomicBooleans works also, but this seems stable and slightly faster
+    private final boolean[] interested = new boolean[2];
+
     private volatile int lockOwner = 0;
 
     PetersonSingleLock(){
-        interested[0] = new AtomicBoolean(false);
-        interested[1] = new AtomicBoolean(false);
+        interested[0] = false;
+        interested[1] = false;
         ids[0] = new AtomicBoolean(false);
         ids[1] = new AtomicBoolean(false);
     }
@@ -95,11 +98,11 @@ public class PetersonSingleLock extends AbstractLock {
     // allows for fast experimenting with alternative data-structures
 
     private boolean getInterest(int anId) {
-        return interested[anId].get();
+        return interested[anId];
     }
 
     private void setInterest(int anId, boolean val) {
-        interested[anId].set(val);
+        interested[anId] = val;
     }
 
     private int getId() {

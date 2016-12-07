@@ -12,12 +12,7 @@ import java.util.concurrent.locks.Condition;
  * The original can be found in "The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit".
  */
 public class ALock extends AbstractLock {
-    private final ThreadLocal<Integer> slotIndex = new ThreadLocal<Integer>(){
-        @Override
-        protected Integer initialValue() {
-            return 0;
-        }
-    };
+    private final ThreadLocal<Integer> slotIndex = ThreadLocal.withInitial(() -> -1);
 
     private final AtomicInteger tail = new AtomicInteger(0);
     private volatile byte[] flags;
@@ -25,10 +20,11 @@ public class ALock extends AbstractLock {
     // How many flags can be put in one cache line?
     private static int FLAGS_CACHE_LINE = 64;
 
-    private final int threadCount;
+    private final int capacity;
 
     private final static byte FLAG_WAITING = 0;
     private final static byte FLAG_HAS_LOCK = 1;
+    private final static byte FLAG_ABANDONED = 3;
 
     private void setFlag(int i, byte val) {
         flags[i * FLAGS_CACHE_LINE] = val;
@@ -41,27 +37,28 @@ public class ALock extends AbstractLock {
         if(FLAGS_CACHE_LINE < 1) {
             throw new RuntimeException("Invalid FLAGS_CACHE_LINE of " + FLAGS_CACHE_LINE + ", must be at least 1");
         }
-        this.threadCount = capacity;
-        flags = new byte[threadCount * FLAGS_CACHE_LINE];
+        this.capacity = capacity;
+        flags = new byte[this.capacity * FLAGS_CACHE_LINE];
         setFlag(0, FLAG_HAS_LOCK);
-        for(int i = 1; i < threadCount; i += 1) {
+        for(int i = 1; i < this.capacity; i += 1) {
             setFlag(i, FLAG_WAITING);
         }
     }
 
+    private int enqueue(){
+        int id = tail.getAndIncrement() % capacity;
+        slotIndex.set(id);
+
+        // should rarely happen
+        while(getFlag(id) == FLAG_ABANDONED);
+
+        return id;
+    }
+
     @Override
     public void lock() {
-        int id = tail.getAndIncrement() % threadCount;
-        slotIndex.set(id);
-        int i = 0;
-        while (getFlag(id) == FLAG_WAITING) {
-            i += 1;
-            if(i > 50*1000*1000){
-                System.err.println(id + ": yield");
-                Thread.yield();
-                i = 0;
-            }
-        }
+        int id = enqueue();
+        while (getFlag(id) == FLAG_WAITING);
     }
 
     @Override
@@ -71,21 +68,39 @@ public class ALock extends AbstractLock {
 
     @Override
     public boolean tryLock() {
-        // TODO: how???
+        int id = enqueue();
+        if (getFlag(id) == FLAG_HAS_LOCK) {
+            // got lock
+            return true;
+        }
+        // recover
+        setFlag(id, FLAG_ABANDONED);
         return false;
     }
 
     @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
-        // TODO: how???
-        return false;
+        int id = enqueue();
+        long stopAt = getStopAt(time, unit);
+        while (getFlag(id) == FLAG_WAITING) {
+            if(stopAtExpired(stopAt)) {
+                setFlag(id, FLAG_ABANDONED);
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
     public void unlock() {
         int id = slotIndex.get();
         setFlag(id, FLAG_WAITING);
-        setFlag((id + 1) % threadCount, FLAG_HAS_LOCK);
+        int nextId = (id + 1) % capacity;
+        while(getFlag(nextId) == FLAG_ABANDONED){
+            setFlag(nextId, FLAG_WAITING);
+            nextId = (nextId + 1) % capacity;
+        }
+        setFlag(nextId, FLAG_HAS_LOCK);
     }
 
     @Override

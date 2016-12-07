@@ -20,10 +20,10 @@ public class CLHLock extends AbstractLock {
     @Override
     public void lock() {
         QNode my = myNode.get();
-        my.locked = true;
+        my.state = STATE_WAITING;
         QNode pred = tail.getAndSet(my);
         predecessor.set(pred);
-        while(pred.locked);
+        while(pred.state != STATE_RELEASED);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class CLHLock extends AbstractLock {
 
     @Override
     public void unlock() {
-        myNode.get().locked = false;
+        myNode.get().state = STATE_RELEASED;
         myNode.set(predecessor.get());
     }
 
@@ -52,9 +52,12 @@ public class CLHLock extends AbstractLock {
         return null;
     }
 
+    // lock released
+    short STATE_RELEASED = 0;
+
+    // acquire lock, wait for lock
+    short STATE_WAITING = 1;
     class QNode {
-        // true: acquired lock or waiting for lock
-        // false: lock released
-        volatile boolean locked = false;
+        volatile short state = STATE_RELEASED;
     }
 }

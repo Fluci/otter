@@ -134,8 +134,9 @@ public class LockInterfaceTests {
                 assertFalse(val, "Failed at try " + i + "/" + tries + ", tryLock returned " + val + " instead of false.");
             } catch (Exception e) {
                 // assert threw, lock was acquired
-                lock.unlock();
                 System.err.println("Failed at try " + i + "/" + tries);
+                e.printStackTrace();
+                lock.unlock();
                 throw new RuntimeException(e);
             } finally {
                 stopThread.release();
